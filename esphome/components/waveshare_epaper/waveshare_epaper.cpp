@@ -84,6 +84,28 @@ static const uint8_t PARTIAL_UPDATE_LUT_TTGO_B1[LUT_SIZE_TTGO_B1] = {
     0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x0F, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
+static const uint8_t LUT_SIZE_GDEW0102T4 = 42;
+
+static const uint8_t FULL_UPDATE_LUT_GDEW0102T4[LUT_SIZE_GDEW0102T4] = {
+  0x60, 0x5A, 0x5A, 0x00, 0x00, 0x01,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+static const uint8_t PARTIAL_UPDATE_LUT_GDEW0102T4[LUT_SIZE_GDEW0102T4] = {
+  0x60, 0x01, 0x01, 0x00, 0x00, 0x01,
+  0x80, 0x0f, 0x00, 0x00, 0x00, 0x01,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
 // clang-format off
 // Disable formatting to preserve the same look as in Waveshare examples
 static const uint8_t PARTIAL_UPD_2IN9_LUT_SIZE = 159;
@@ -405,6 +427,35 @@ void WaveshareEPaperTypeA::initialize() {
         ESP_LOGI(TAG, "Set the display to deep sleep");
         this->deep_sleep();
         break;
+      case TTGO_EPAPER_1_02_IN:
+        // _writeCommand(0xD2); // ??
+        // _writeData(0x3F);
+        // _writeCommand(0x00); // Panel Setting Register
+        // _writeData (useOTPforFullRefresh ? 0x4F : 0x6F);   // LUT from OTP or from Registers
+        // _writeCommand(0x01); // Power Setting
+        // _writeData (0x03);   // internal VDH/VDL VGH/VGL
+        // _writeData (0x00);   // VDG_LVL +15,-15
+        // _writeData (0x2b);   // VDH_LVL +11
+        // _writeData (0x2b);   // VDL_LVL -11
+        // _writeCommand(0x06); // Charge Pump Setting
+        // _writeData(0x3f);    // 50ms, Stength 4, 8kHz
+        // _writeCommand(0x2A); // LUT Option
+        // _writeData(0x00);    // no all gate on
+        // _writeData(0x00);    // 0..5 : 10s, 20..30 : 4.8s
+        // _writeCommand(0x30); // PLL
+        // _writeData(0x13);    // 30 Hz
+        // _writeCommand(0x50); // VCOM and Data interval setting
+        // _writeData(0x57);    // default                         || OOOORRR 0xF2
+        // _writeCommand(0x60); // TCON
+        // _writeData(0x22);    // 24us
+        // _writeCommand(0x61); // Resolution Setting              || OOOORRR NOTHING
+        // _writeData (0x50);   // HRES 80                         || OOOORRR NOTHING
+        // _writeData (0x80);   // VRES 128                        || OOOORRR NOTHING
+        // _writeCommand(0x82); // Vcom DC Setting
+        // _writeData(0x12);    // -1 V                            || OOOORRR 0x00
+        // _writeCommand(0xe3); // Power Saving
+        // _writeData(0x33);    //
+        break;
       default:
         break;
     }
@@ -481,6 +532,9 @@ void WaveshareEPaperTypeA::dump_config() {
     case WAVESHARE_EPAPER_2_13_IN_V2:
       ESP_LOGCONFIG(TAG, "  Model: 2.13inV2");
       break;
+    case TTGO_EPAPER_1_02_IN:
+      ESP_LOGCONFIG(TAG, "  Model: 1.02in (TTGO)");
+      break;
     case TTGO_EPAPER_2_13_IN:
       ESP_LOGCONFIG(TAG, "  Model: 2.13in (TTGO)");
       break;
@@ -538,6 +592,9 @@ void HOT WaveshareEPaperTypeA::display() {
           break;
         case TTGO_EPAPER_2_13_IN_B1:
           this->write_lut_(full_update ? FULL_UPDATE_LUT_TTGO_B1 : PARTIAL_UPDATE_LUT_TTGO_B1, LUT_SIZE_TTGO_B1);
+          break;
+        case TTGO_EPAPER_1_02_IN:
+          this->write_lut_(full_update ? FULL_UPDATE_LUT_GDEW0102T4 : PARTIAL_UPDATE_LUT_GDEW0102T4, LUT_SIZE_GDEW0102T4);
           break;
         default:
           this->write_lut_(full_update ? FULL_UPDATE_LUT : PARTIAL_UPDATE_LUT, LUT_SIZE_WAVESHARE);
@@ -703,6 +760,8 @@ int WaveshareEPaperTypeA::get_width_internal() {
     case WAVESHARE_EPAPER_2_9_IN:
     case WAVESHARE_EPAPER_2_9_IN_V2:
       return 128;
+    case TTGO_EPAPER_1_02_IN:
+      return 80;
   }
   return 0;
 }
@@ -722,6 +781,8 @@ int WaveshareEPaperTypeA::get_width_controller() {
 }
 int WaveshareEPaperTypeA::get_height_internal() {
   switch (this->model_) {
+    case TTGO_EPAPER_1_02_IN:
+      return 128;
     case WAVESHARE_EPAPER_1_54_IN:
     case WAVESHARE_EPAPER_1_54_IN_V2:
       return 200;
