@@ -114,6 +114,21 @@ enum WaveshareEPaperTypeAModel {
   TTGO_EPAPER_2_13_IN_B73,
   TTGO_EPAPER_2_13_IN_B1,
   TTGO_EPAPER_2_13_IN_B74,
+  GDEW0102T4,
+};
+
+class WaveshareEPaper1In02 : public WaveshareEPaper {
+ public:
+  void initialize() override;
+  void display() override;
+  void dump_config() override;
+  void deep_sleep() override;
+
+ protected:
+  void write_lut_(const uint8_t *lut, uint8_t size);
+  int get_width_internal() override;
+  int get_height_internal() override;
+  uint32_t get_buffer_length_() override;
 };
 
 class WaveshareEPaperTypeA : public WaveshareEPaper {

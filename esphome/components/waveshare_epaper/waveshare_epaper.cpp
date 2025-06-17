@@ -111,6 +111,154 @@ static const uint8_t PARTIAL_UPD_2IN9_LUT[PARTIAL_UPD_2IN9_LUT_SIZE] =
 };
 // clang-format on
 
+// Add the LUT tables for GDEW0102T4 (based on reference implementation)
+static const uint8_t LUT_FULL_UPDATE_1IN02[] = {
+  0x80, 0x60, 0x40, 0x00, 0x00, 0x00, 0x00,  // LUT0: BB:     VS 0 ~7
+  0x10, 0x60, 0x20, 0x00, 0x00, 0x00, 0x00,  // LUT1: BW:     VS 0 ~7
+  0x80, 0x60, 0x40, 0x00, 0x00, 0x00, 0x00,  // LUT2: WB:     VS 0 ~7
+  0x10, 0x60, 0x20, 0x00, 0x00, 0x00, 0x00,  // LUT3: WW:     VS 0 ~7
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // LUT4: VCOM:   VS 0 ~7
+  0x03, 0x03, 0x00, 0x00, 0x02,              // TP0 A~D RP0
+  0x09, 0x09, 0x00, 0x00, 0x02,              // TP1 A~D RP1
+  0x03, 0x03, 0x00, 0x00, 0x02,              // TP2 A~D RP2
+  0x00, 0x00, 0x00, 0x00, 0x00,              // TP3 A~D RP3
+  0x00, 0x00, 0x00, 0x00, 0x00,              // TP4 A~D RP4
+  0x00, 0x00, 0x00, 0x00, 0x00,              // TP5 A~D RP5
+  0x00, 0x00, 0x00, 0x00, 0x00,              // TP6 A~D RP6
+};
+
+static const uint8_t LUT_PARTIAL_UPDATE_1IN02[] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // LUT0: BB:     VS 0 ~7
+  0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // LUT1: BW:     VS 0 ~7
+  0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // LUT2: WB:     VS 0 ~7
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // LUT3: WW:     VS 0 ~7
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // LUT4: VCOM:   VS 0 ~7
+  0x0A, 0x00, 0x00, 0x00, 0x00,              // TP0 A~D RP0
+  0x00, 0x00, 0x00, 0x00, 0x00,              // TP1 A~D RP1
+  0x00, 0x00, 0x00, 0x00, 0x00,              // TP2 A~D RP2
+  0x00, 0x00, 0x00, 0x00, 0x00,              // TP3 A~D RP3
+  0x00, 0x00, 0x00, 0x00, 0x00,              // TP4 A~D RP4
+  0x00, 0x00, 0x00, 0x00, 0x00,              // TP5 A~D RP5
+  0x00, 0x00, 0x00, 0x00, 0x00,              // TP6 A~D RP6
+};
+
+// Implementation of WaveshareEPaper1In02 class
+void WaveshareEPaper1In02::initialize() {
+  this->init_internal_(this->get_buffer_length_());
+
+  this->command(0x12);  // Software reset
+  this->wait_until_idle_();
+
+  this->command(0x01);  // Driver output control
+  this->data(0x7F);     // Height - 1 (127)
+  this->data(0x00);     // Height high byte
+  this->data(0x00);     // GD = 0; SM = 0; TB = 0;
+
+  this->command(0x0C);  // Booster soft start control
+  this->data(0xD7);
+  this->data(0xD6);
+  this->data(0x9D);
+
+  this->command(0x2C);  // VCOM setting
+  this->data(0xA8);     // VCOM value
+
+  this->command(0x3A);  // Dummy line period
+  this->data(0x1A);     // 4 dummy lines per gate
+
+  this->command(0x3B);  // Gate time setting
+  this->data(0x08);     // 2us per line
+
+  this->command(0x11);  // Data entry mode
+  this->data(0x01);     // X increment, Y increment, AM = 0
+
+  this->command(0x44);  // Set RAM X-address start/end position
+  this->data(0x00);     // Start = 0
+  this->data(0x0F);     // End = 15 (16 bytes = 128 pixels / 8)
+
+  this->command(0x45);  // Set RAM Y-address start/end position
+  this->data(0x00);     // Start = 0
+  this->data(0x00);     // Start high byte
+  this->data(0x7F);     // End = 127
+  this->data(0x00);     // End high byte
+
+  this->command(0x4E);  // Set RAM X-address counter
+  this->data(0x00);
+
+  this->command(0x4F);  // Set RAM Y-address counter
+  this->data(0x00);
+  this->data(0x00);
+
+  this->wait_until_idle_();
+}
+
+void WaveshareEPaper1In02::display() {
+  uint32_t buffer_length = this->get_buffer_length_();
+
+  // Write LUT
+  this->command(0x32);
+  for (uint8_t i = 0; i < sizeof(LUT_FULL_UPDATE_1IN02); i++) {
+    this->data(LUT_FULL_UPDATE_1IN02[i]);
+  }
+
+  // Set RAM X-address counter
+  this->command(0x4E);
+  this->data(0x00);
+
+  // Set RAM Y-address counter
+  this->command(0x4F);
+  this->data(0x00);
+  this->data(0x00);
+
+  // Write RAM for black/white
+  this->command(0x24);
+  for (uint32_t i = 0; i < buffer_length; i++) {
+    this->data(this->buffer_[i]);
+  }
+
+  // Display update
+  this->command(0x22);
+  this->data(0xC4);
+  this->command(0x20);
+  this->command(0xFF);
+
+  this->wait_until_idle_();
+}
+
+void WaveshareEPaper1In02::dump_config() {
+  LOG_DISPLAY("", "Waveshare E-Paper", this);
+  ESP_LOGCONFIG(TAG, "  Model: 1.02in (GDEW0102T4)");
+  ESP_LOGCONFIG(TAG, "  Resolution: 80x128");
+  LOG_PIN("  Reset Pin: ", this->reset_pin_);
+  LOG_PIN("  DC Pin: ", this->dc_pin_);
+  LOG_PIN("  Busy Pin: ", this->busy_pin_);
+  LOG_UPDATE_INTERVAL(this);
+}
+
+void WaveshareEPaper1In02::deep_sleep() {
+  this->command(0x10);  // Deep sleep mode
+  this->data(0x01);     // Check code
+  this->wait_until_idle_();
+}
+
+int WaveshareEPaper1In02::get_height_internal() {
+  return 128;
+}
+
+int WaveshareEPaper1In02::get_width_internal() {
+  return 80;
+}
+
+uint32_t WaveshareEPaper1In02::get_buffer_length_() {
+  return size_t(this->get_width_internal()) * size_t(this->get_height_internal()) / 8u;
+}
+
+void WaveshareEPaper1In02::write_lut_(const uint8_t *lut, uint8_t size) {
+  this->command(0x32);
+  for (uint8_t i = 0; i < size; i++) {
+    this->data(lut[i]);
+  }
+}
+
 void WaveshareEPaperBase::setup() {
   this->init_internal_(this->get_buffer_length_());
   this->setup_pins_();
